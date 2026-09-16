@@ -23,14 +23,14 @@ class Program
         int.Parse(cols[6]), int.Parse(cols[7]), int.Parse(cols[8]), bool.Parse(cols[9])
     );
 
-    static void ExportCs2(string player, IEnumerable<DataPoint<Cs2Match>> matches, string path)
+    static void ExportCs2(DataSeries<Cs2Match> matches, string path)
     {
         var header = "date,player,map,start_side,kills,deaths,assists,mvps,won";
-        var lines = matches.Select(p =>
-        {
-            var m = p.Value;
-            return $"{p.Timestamp:yyyy-MM-dd},{m.Player},{m.Map},{m.StartSide},{m.Kills},{m.Deaths},{m.Assists},{m.Mvps},{m.Won.ToString().ToLower()}";
-        });
+        var lines = matches.DataPoints.Select(dp =>
+            $"{dp.Timestamp:yyyy-MM-dd},{dp.Value.Player},{dp.Value.Map},{dp.Value.StartSide}," +
+            $"{dp.Value.Kills},{dp.Value.Deaths},{dp.Value.Assists},{dp.Value.Mvps}," +
+            $"{dp.Value.Won.ToString().ToLower()}"
+        );
         File.WriteAllLines(path, lines.Prepend(header));
     }
 
@@ -52,10 +52,10 @@ class Program
                 {
                     var series = MatchGenerator.GenerateCs2(player, 20);
 
-                    var validMatches = series.Values.Where(p => isValid(p.Value)).ToList();
+                    var validMatches = series.Filter(isValid);
 
-                    ExportCs2(player, validMatches, $"data/gen/{player.ToLower()}_generated.csv");
-                    Console.WriteLine($"{player} : {validMatches.Count()} données valides générées et exportées.");
+                    ExportCs2(validMatches, $"data/gen/{player.ToLower()}_generated.csv");
+                    Console.WriteLine($"{player} : {validMatches.Count} données valides générées et exportées.");
                 }
                 return;
             }

@@ -7,14 +7,14 @@ namespace EsportApp;
 
 public static class MatchGenerator
 {
-    public static DataSeries<DataPoint<Cs2Match>> GenerateCs2(string player, int count, int seed = 42)
+    public static DataSeries<Cs2Match> GenerateCs2(string player, int count, int seed = 42)
     {
         var rng = new Random(seed);
         var maps = new[] { "Dust2", "Mirage", "Inferno", "Nuke", "Ancient" };
         var sides = new[] { "CT", "T" };
         var start = new DateTime(2023, 9, 1);
 
-        return DataSeries<DataPoint<Cs2Match>>.From(
+        return DataSeries<Cs2Match>.From(
             Enumerable.Range(1, count)
                 .Select(i => new DataPoint<Cs2Match>(
                     start.AddDays(i),
@@ -29,16 +29,17 @@ public static class MatchGenerator
                         rng.Next(2) == 0                // won
                     )
                 ))
+                .ToList()
         );
     }
 
-    public static DataSeries<DataPoint<ValorantMatch>> GenerateValorant(string player, int count, int seed = 42)
+    public static DataSeries<ValorantMatch> GenerateValorant(string player, int count, int seed = 42)
     {
         var rng = new Random(seed);
         var agents = new[] { "Jett", "Reyna", "Omen", "Sova", "Sage", "Killjoy", "Raze", "Phoenix", "Cypher", "Viper" };
         var start = new DateTime(2023, 9, 1);
 
-        return DataSeries<DataPoint<ValorantMatch>>.From(
+        return DataSeries<ValorantMatch>.From(
             Enumerable.Range(1, count)
                 .Select(i => new DataPoint<ValorantMatch>(
                     start.AddDays(i),
@@ -53,10 +54,11 @@ public static class MatchGenerator
                         rng.Next(2) == 0                    // won
                     )
                 ))
+                .ToList()
         );
     }
 
-    public static DataSeries<DataPoint<LolMatch>> GenerateLol(string player, int count, int seed = 42)
+    public static DataSeries<LolMatch> GenerateLol(string player, int count, int seed = 42)
     {
         var rng = new Random(seed);
         var champions = new[]
@@ -69,7 +71,7 @@ public static class MatchGenerator
         };
         var start = new DateTime(2023, 9, 1);
 
-        return DataSeries<DataPoint<LolMatch>>.From(
+        return DataSeries<LolMatch>.From(
             Enumerable.Range(1, count)
                 .Select(i =>
                 {
@@ -90,6 +92,7 @@ public static class MatchGenerator
                         )
                     );
                 })
+                .ToList()
         );
     }
 }
