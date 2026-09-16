@@ -19,16 +19,18 @@ class Program
     );
 
     static LolMatch ParseLol(string[] cols) => new LolMatch(
-        cols[1], cols[2], int.Parse(cols[4]), int.Parse(cols[5]),
+        cols[1], cols[2], cols[3], int.Parse(cols[4]), int.Parse(cols[5]),
         int.Parse(cols[6]), int.Parse(cols[7]), int.Parse(cols[8]), bool.Parse(cols[9])
     );
 
-    static void ExportCs2(string player, IEnumerable<Cs2Match> matches, string path)
+    static void ExportCs2(string player, IEnumerable<DataPoint<Cs2Match>> matches, string path)
     {
         var header = "date,player,map,start_side,kills,deaths,assists,mvps,won";
-        var lines = matches.Select((m, i) =>
-            $"2024-01-{i + 1:D2},{m.Player},{m.Map},{m.StartSide},{m.Kills},{m.Deaths},{m.Assists},{m.Mvps},{m.Won.ToString().ToLower()}"
-        );
+        var lines = matches.Select(p =>
+        {
+            var m = p.Value;
+            return $"{p.Timestamp:yyyy-MM-dd},{m.Player},{m.Map},{m.StartSide},{m.Kills},{m.Deaths},{m.Assists},{m.Mvps},{m.Won.ToString().ToLower()}";
+        });
         File.WriteAllLines(path, lines.Prepend(header));
     }
 
@@ -48,11 +50,11 @@ class Program
 
                 foreach (var player in players)
                 {
-                    var series = DataSeries<Cs2Match>.From(MatchGenerator.GenerateCs2(player, 20));
+                    var series = MatchGenerator.GenerateCs2(player, 20);
 
-                    var validMatches = series.Values.Where(isValid);
+                    var validMatches = series.Values.Where(p => isValid(p.Value)).ToList();
 
-                    ExportCs2(player, validMatches, $"{player.ToLower()}_generated.csv");
+                    ExportCs2(player, validMatches, $"data/gen/{player.ToLower()}_generated.csv");
                     Console.WriteLine($"{player} : {validMatches.Count()} données valides générées et exportées.");
                 }
                 return;
@@ -71,7 +73,7 @@ class Program
         }
         catch (DirectoryNotFoundException)
         {
-            Console.WriteLine("Dossier 'data/' introuvable. Assure-toi d'avoir les fichiers au bon endroit !");
+            Console.WriteLine("Dossier 'data/' introuvable.");
         }
         catch (FileNotFoundException ex)
         {
