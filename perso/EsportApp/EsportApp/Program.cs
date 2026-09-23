@@ -34,6 +34,17 @@ class Program
         File.WriteAllLines(path, lines.Prepend(header));
     }
 
+    static void ExportValorant(DataSeries<ValorantMatch> matches, string path)
+    {
+        var header = "date,player,agent,kills,deaths,assists,headshots,rounds_won,won";
+        var lines = matches.DataPoints.Select(dp =>
+            $"{dp.Timestamp:yyyy-MM-dd},{dp.Value.Player},{dp.Value.Agent},{dp.Value.Kills}," +
+            $"{dp.Value.Deaths},{dp.Value.Assists},{dp.Value.Headshots},{dp.Value.RoundsWon}," +
+            $"{dp.Value.Won.ToString().ToLower()}"
+        );
+        File.WriteAllLines(path, lines.Prepend(header));
+    }
+
     static void Main(string[] args)
     {
         Func<Cs2Match, bool> isValid = m => m.Kills + m.Assists <= 50 && m.Deaths >= 1;
@@ -61,20 +72,64 @@ class Program
             }
         }
 
+        string? playerFilter = args.Contains("--player")
+            ? args[Array.IndexOf(args, "--player") + 1]
+            : null;
+
+        string filterMode = args.Contains("--filter")
+            ? args[Array.IndexOf(args, "--filter") + 1]
+            : "all";
+
+        string errorMode = args.Contains("--error")
+            ? args[Array.IndexOf(args, "--error") + 1]
+            : "soft";
+
+        var filters = new Dictionary<string, Func<ValorantMatch, bool>>
+        {
+            ["wins"]   = m => m.Won,
+            ["losses"] = m => !m.Won,
+            ["all"]    = m => true,
+        };
+
+
+
         try
         {
             var valorant = DataSeries<ValorantMatch>.FromCsv("data/valorant.csv", ParseValorant);
             var cs2 = DataSeries<Cs2Match>.FromCsv("data/cs2.csv", ParseCs2);
             var lol = DataSeries<LolMatch>.FromCsv("data/lol.csv", ParseLol);
 
-            Console.WriteLine($"Valorant : {valorant.Count} matchs chargés.");
-            Console.WriteLine($"CS2      : {cs2.Count} matchs chargés.");
-            Console.WriteLine($"LoL      : {lol.Count} matchs chargés.");
+            Func<ValorantMatch, bool> isOutlier = m =>
+                m.Kills < 0 || m.Kills > 50 ||
+                m.Deaths < 0 || m.Deaths > 30 ||
+                m.Assists < 0;
+
+            if (errorMode == "strict")
+            {
+                var bad = valorant.Outliers(isOutlier);
+                    Console.WriteLine(string.Join("\n", bad.DataPoints.Select(dp =>
+                        $"{dp.Timestamp:yyyy-MM-dd} — {dp.Value.Player} : {dp.Value.Kills} kills"
+                    )));
+                return;
+            }
+
+            var propre = valorant.Sanitize(isOutlier);
+
+            if (errorMode == "hard")
+                ExportValorant(propre, "data/valorant_clean.csv");
+
+            var result = propre
+                .Filter(m => playerFilter == null || m.Player == playerFilter)
+                .Filter(filters[filterMode]);
+
+            Console.WriteLine($"{result.Count} matchs.");
         }
+
         catch (DirectoryNotFoundException)
         {
             Console.WriteLine("Dossier 'data/' introuvable.");
         }
+
         catch (FileNotFoundException ex)
         {
             Console.WriteLine($"Fichier introuvable : {ex.FileName}");
